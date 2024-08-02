@@ -42,3 +42,13 @@ row_selector = (puzzles.NbPlays .> plays_lo) .&&
 good = puzzles[row_selector, ["Rating", "Popularity"]]
 
 plot(histogram(good.Rating; label = "Rating"), histogram(good.Popularity; label = "Popularity"))
+
+# Exercise 9.1
+
+using StatsBase
+
+nb_100 = copy(puzzles[(puzzles.Popularity .== 100) , "NbPlays"])
+nbnot100 = copy(puzzles[(puzzles.Popularity .== -100) , "NbPlays"])
+summarystats(nb_100)
+summarystats(nbnot100)
+
