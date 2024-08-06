@@ -1,14 +1,22 @@
 using XLSX
 using DataFrames
 using Chain
-using Cleaner
+using DataFramesMeta
+using Dates
+
 # Load Data
+df = DataFrame(XLSX.readtable(joinpath("data", "Tableau_practice_data.xlsx"), "05 - Flu Occurrence FY2013-2016"; infer_eltypes=true))
 
-df = DataFrame(XLSX.readtable(joinpath("data", "Tableau_practice_data.xlsx"), "05 - Flu Occurrence FY2013-2016"))
 
+function format_names(x::String)
+x = lowercase(x)
+x = replace(x, " " => "_", "+" => "pos", "(" => "", ")" => "", "%" => "pct")
+return x
+end
 
 
 
 @chain df begin
-  polish_names
+  rename(format_names, _)
+  @rtransform  :month = Dates.month(:date)  #transform by Row
 end
