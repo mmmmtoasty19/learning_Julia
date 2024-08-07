@@ -16,7 +16,7 @@ x = replace(x, " " => "_", "+" => "pos", "(" => "", ")" => "", "%" => "pct")
 return x
 end
 
-#need to convert flu year to categroical
+#need to convert Month to categroical
 
 df = @chain df_raw begin
   rename(format_names, _)
@@ -25,6 +25,13 @@ df = @chain df_raw begin
   @rtransform  :flu_year = ifelse(:month >= 10, :year + 1, :year)
 end
 
+
+fig = Figure(; size = (600,400))
+ax = Axis(fig[1,1])
+lines!(ax, df.month, df.pct_tests_pos_for_influenza; color = df.flu_year)
+
 plt = data(df) * mapping(:month, :pct_tests_pos_for_influenza; color = :flu_year) * visual(Lines)
 
 draw(plt)
+
+fig
