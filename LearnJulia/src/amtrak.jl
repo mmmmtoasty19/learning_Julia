@@ -2,6 +2,8 @@ using HTTP
 using Gumbo
 using Cascadia
 using DataFrames
+using DataFramesMeta
+using Dates
 
 url = "https://juckins.net/amtrak_status/archive/html/history.php?train_num=97&station=&date_start=07%2F01%2F2024&date_end=07%2F31%2F2024&df1=1&df2=1&df3=1&df4=1&df5=1&df6=1&df7=1&sort=schDp&sort_dir=DESC&co=gt&limit_mins=&dfon=1"
 
@@ -11,15 +13,6 @@ page = parsehtml(String(resp.body))
 # println(String(resp.body))
 s = sel"tr"
 rows = eachmatch(s, page.root)
-
-row_text = String[]
-
-# need to make this a nested for loopS
-for i in rows
-    text = nodeText(eachmatch(Selector("tr"), i)[1])
-    println("$text")
-    push!(row_text, text)
-end
 
 # this appears to work.  Probably not the best way to do it but it works
 orgin_date = []
@@ -40,13 +33,30 @@ for i in rows
         push!(comments, nodeText(text[5]))
         push!(service_disrupt, nodeText(text[6]))
         push!(cancellations, nodeText(text[7]))
-        
-        # for el in text
-        #     test = nodeText(el) * ','
-        #     println(test)
-        # end
     end
 end
 
 
-df = DataFrame(orgin_date = orgin_date)
+df = DataFrame(orgin_date = [], station = [], sch_dp = [], act_dp = String[], comments = [], s_disrupt = [], cancellations = [])
+
+for i in rows
+    text = eachmatch(Selector("td"), i)
+    row_data = []
+    if !isempty(text) && length(text) > 1
+        for item in text
+            push!(row_data, nodeText(item))
+            # println("$item,")
+        end
+    push!(df, row_data)
+    end
+end
+
+
+mod_df = @chain df begin
+    @rsubset :act_dp != ""
+    @rtransform dep = Dates.Time(:act_dp, "HH:MMp")
+end
+
+
+
+
