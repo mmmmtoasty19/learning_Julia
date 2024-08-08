@@ -14,29 +14,7 @@ page = parsehtml(String(resp.body))
 s = sel"tr"
 rows = eachmatch(s, page.root)
 
-# this appears to work.  Probably not the best way to do it but it works
-orgin_date = []
-station = []
-sch_dp = []
-act_dp = []
-comments = []
-service_disrupt = []
-cancellations = []
-
-for i in rows
-    text = eachmatch(Selector("td"), i)
-    if !isempty(text) && length(text) > 1
-        push!(orgin_date, nodeText(text[1]))
-        push!(station, nodeText(text[2]))
-        push!(sch_dp, nodeText(text[3]))
-        push!(act_dp, nodeText(text[4]))
-        push!(comments, nodeText(text[5]))
-        push!(service_disrupt, nodeText(text[6]))
-        push!(cancellations, nodeText(text[7]))
-    end
-end
-
-
+# create empty DataFrame and then populate it with the table from website
 df = DataFrame(orgin_date = [], station = [], sch_dp = [], act_dp = String[], comments = [], s_disrupt = [], cancellations = [])
 
 for i in rows
@@ -54,9 +32,10 @@ end
 
 mod_df = @chain df begin
     @rsubset :act_dp != ""
-    @rtransform dep = Dates.Time(:act_dp, "HH:MMp")
+    @rtransform _ begin
+        :act_dp = Time(:act_dp, dateformat"HH:MMp")
+        :orgin_date = Date(replace(:orgin_date,  r" \(.*\)" => ""), dateformat"mm/dd/YYYY")
+        :sch_dp = DateTime(replace(:sch_dp,  r" \(.*\)" => ""), dateformat"mm/dd/YYYY HH:MM p")
+    end
 end
-
-
-
 
