@@ -30,21 +30,34 @@ for i in rows
     end
 end
 
+#This causes an issue with two stations becauses trains often arrive one day and leave the next
+# mod_df = @chain df begin
+#     @rsubset :act_dp != "" && :s_disrupt != "SD"
+#     @select Not(:comments, :s_disrupt, :cancellations)
+#     @rtransform _ begin
+#         :act_dp = Time(:act_dp, dateformat"HH:MMp")
+#         :orgin_date = Date(replace(:orgin_date,  r" \(.*\)" => ""), dateformat"mm/dd/YYYY")
+#         :sch_dp = DateTime(replace(:sch_dp,  r" \(.*\)" => ""), dateformat"mm/dd/YYYY HH:MM p")
+#     end
+#     # @rtransform  :delay = canonicalize(Dates.CompoundPeriod(:act_dp - Time(:sch_dp)))
+#     # @rtransform  :delay = canonicalize(:act_dp - Time(:sch_dp))
+#     @rtransform  :delay = Dates.value(Minute(:act_dp - Time(:sch_dp)))
+# end
+
 
 mod_df = @chain df begin
     @rsubset :act_dp != "" && :s_disrupt != "SD"
-    @select Not(:comments, :s_disrupt, :cancellations)
+    @select Not(:s_disrupt, :cancellations)
     @rtransform _ begin
-        :act_dp = Time(:act_dp, dateformat"HH:MMp")
-        :orgin_date = Date(replace(:orgin_date,  r" \(.*\)" => ""), dateformat"mm/dd/YYYY")
-        :sch_dp = DateTime(replace(:sch_dp,  r" \(.*\)" => ""), dateformat"mm/dd/YYYY HH:MM p")
+        #can't perform match if there is nothing there
+        :delay =  if occursin(r"Dp:", :comments) match(r"Dp:.*", :comments).match else "" end 
     end
-    # @rtransform  :delay = canonicalize(Dates.CompoundPeriod(:act_dp - Time(:sch_dp)))
-    # @rtransform  :delay = canonicalize(:act_dp - Time(:sch_dp))
-    @rtransform  :delay = :act_dp - Time(:sch_dp)
 end
 
 
-Statistics.mean(mod_df.delay)
-mod_df.delay
-Statistics.mean(1:20)
+gd = @by mod_df :station begin
+    mean = Statistics.mean(:delay)
+    median = Statistics.median(:delay)
+end
+
+
