@@ -47,17 +47,20 @@ end
 
 mod_df = @chain df begin
     @rsubset :act_dp != "" && :s_disrupt != "SD"
-    @select Not(:s_disrupt, :cancellations)
-    @rtransform _ begin
-        #can't perform match if there is nothing there
-        :delay =  if occursin(r"Dp:", :comments) match(r"Dp:.*", :comments).match else "" end 
-    end
+    @select :station :comments
+    #can't perform match if there is nothing there
+    @rtransform :delay =  if occursin(r"Dp:", :comments) match(r"Dp:.*", :comments).match else "" end 
+    @rtransform :min = if occursin(r"min", :delay) match(r"[0-9]* min", :delay).match |> 
+        x -> parse(Int,match(r"[0-9]*", x).match) else Int(0) end
+    @rtransform :hour = if occursin(r"hr", :delay) match(r"[1-9]* hr", :delay).match |> 
+        x -> parse(Int,match(r"[1-9]*", x).match) |> x -> x*60  else Int(0) end
+    @rtransform :total_delay_mins = :min + :hour
 end
 
 
 gd = @by mod_df :station begin
-    mean = Statistics.mean(:delay)
-    median = Statistics.median(:delay)
+    :mean = Statistics.mean(:total_delay_mins)
+    :median = Statistics.median(:total_delay_mins)
 end
 
 
