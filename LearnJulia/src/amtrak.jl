@@ -5,8 +5,11 @@ using DataFrames
 using DataFramesMeta
 using Dates
 using Statistics
+using AlgebraOfGraphics
+using CairoMakie
 
-url = "https://juckins.net/amtrak_status/archive/html/history.php?train_num=97&station=&date_start=07%2F01%2F2024&date_end=07%2F31%2F2024&df1=1&df2=1&df3=1&df4=1&df5=1&df6=1&df7=1&sort=schDp&sort_dir=DESC&co=gt&limit_mins=&dfon=1"
+
+url = "https://juckins.net/amtrak_status/archive/html/history.php?train_num=97%2C98&station=&date_start=07%2F01%2F2024&date_end=07%2F31%2F2024"
 
 resp = HTTP.get(url)
 
@@ -16,7 +19,7 @@ s = sel"tr"
 rows = eachmatch(s, page.root)
 
 # create empty DataFrame and then populate it with the table from website
-df = DataFrame(orgin_date = [], station = [], sch_dp = [], act_dp = String[], comments = [], s_disrupt = [], cancellations = [])
+df = DataFrame(train = String[], orgin_date = [], station = String[], sch_dp = [], act_dp = String[], comments = [], s_disrupt = [], cancellations = [])
 
 for i in rows
     text = eachmatch(Selector("td"), i)
@@ -47,20 +50,35 @@ end
 
 mod_df = @chain df begin
     @rsubset :act_dp != "" && :s_disrupt != "SD"
-    @select :station :comments
+    @select :train :station :comments
     #can't perform match if there is nothing there
     @rtransform :delay =  if occursin(r"Dp:", :comments) match(r"Dp:.*", :comments).match else "" end 
     @rtransform :min = if occursin(r"min", :delay) match(r"[0-9]* min", :delay).match |> 
         x -> parse(Int,match(r"[0-9]*", x).match) else Int(0) end
     @rtransform :hour = if occursin(r"hr", :delay) match(r"[1-9]* hr", :delay).match |> 
         x -> parse(Int,match(r"[1-9]*", x).match) |> x -> x*60  else Int(0) end
-    @rtransform :total_delay_mins = :min + :hour
+    @rtransform :total_delay_mins = :min + :hour |> x -> ifelse(occursin(r"late", :delay), x, x *-1)
 end
 
 
-gd = @by mod_df :station begin
-    :mean = Statistics.mean(:total_delay_mins)
-    :median = Statistics.median(:total_delay_mins)
+gd = @chain mod_df begin
+    @by _ [:train,:station] begin
+        :mean = Float32[Statistics.mean(:total_delay_mins)]
+        :median = Statistics.median(:total_delay_mins)
+        :max = maximum(:total_delay_mins)
+        :min = minimum(:total_delay_mins)
+    end  
+    @orderby :station :train
+    @groupby :station
+    @transform :diff = [missing; diff(:mean)]
 end
+
+# plot(bar(gd.station, gd.mean), xticks = (1:length(gd.station), gd.station), xrotation = 90, legend = false, title = "Mean Delay by Station", xlabel = "Station", ylabel = "Delay (mins)")
+
+axis = (width = 750, height = 750,  title = "Mean Delay by Station", xlabel = "Station", ylabel = "Delay (mins)",xticklabelrotation = 45)
+
+mean_delay = data(gd) * mapping(:station, :mean, color = :train => "Train", dodge = :train) * visual(BarPlot)
+
+draw(mean_delay; axis = axis)
 
 
