@@ -7,6 +7,7 @@ using Dates
 using Statistics
 using AlgebraOfGraphics
 using CairoMakie
+using CategoricalArrays
 
 
 url = "https://juckins.net/amtrak_status/archive/html/history.php?train_num=97%2C98&station=&date_start=07%2F01%2F2024&date_end=07%2F31%2F2024"
@@ -58,6 +59,7 @@ mod_df = @chain df begin
     @rtransform :hour = if occursin(r"hr", :delay) match(r"[1-9]* hr", :delay).match |> 
         x -> parse(Int,match(r"[1-9]*", x).match) |> x -> x*60  else Int(0) end
     @rtransform :total_delay_mins = :min + :hour |> x -> ifelse(occursin(r"late", :delay), x, x *-1)
+    @transform :station = categorical(:station)
 end
 
 
@@ -71,6 +73,7 @@ gd = @chain mod_df begin
     @orderby :station :train
     @groupby :station
     @transform :diff = [missing; diff(:mean)]
+    @rtransform :station_code = levelcode(:station)
 end
 
 # plot(bar(gd.station, gd.mean), xticks = (1:length(gd.station), gd.station), xrotation = 90, legend = false, title = "Mean Delay by Station", xlabel = "Station", ylabel = "Delay (mins)")
@@ -81,4 +84,4 @@ mean_delay = data(gd) * mapping(:station, :mean, color = :train => "Train", dodg
 
 draw(mean_delay; axis = axis)
 
-
+CairoMakie.barplot(gd.station_code, gd.mean)
