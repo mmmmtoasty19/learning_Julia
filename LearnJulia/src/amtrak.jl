@@ -48,33 +48,15 @@ end
 #     @rtransform  :delay = Dates.value(Minute(:act_dp - Time(:sch_dp)))
 # end
 
-
-mod_df = @chain df begin
-    @rsubset :act_dp != "" && :s_disrupt != "SD"
-    @select :train :station :comments
-    #can't perform match if there is nothing there
-    @rtransform :delay =  if occursin(r"Dp:", :comments) match(r"Dp:.*", :comments).match else "" end 
-    @rtransform :min = if occursin(r"min", :delay) match(r"[0-9]* min", :delay).match |> 
-        x -> parse(Int,match(r"[0-9]*", x).match) else Int(0) end
-    @rtransform :hour = if occursin(r"hr", :delay) match(r"[1-9]* hr", :delay).match |> 
-        x -> parse(Int,match(r"[1-9]*", x).match) |> x -> x*60  else Int(0) end
-    @rtransform :total_delay_mins = :min + :hour |> x -> ifelse(occursin(r"late", :delay), x, x *-1)
-    @transform _ begin
-        :station = categorical(:station)
-        :train = categorical(:train)
-    end
-end
-
-
-
-
-
 mod_df = @chain df begin
     @rsubset :act_dp != "" && :s_disrupt != "SD"
     @select :train :station :comments
     #can't perform match if there is nothing there
     @rtransform :delay =  occursin(r"Dp:", :comments) ? match(r"Dp:.*", :comments).match : ""
     @rtransform :min = occursin(r"min", :delay) ? parse(Int,match(r"([0-9]*) min", :delay)[1]) : Int(0)
+    @rtransform :hour = occursin(r"hr", :delay) ? parse(Int,match(r"([0-9]*) hr", :delay)[1]) *60 : Int(0)
+    @rtransform :total_delay_mins = :min + :hour |> x -> occursin(r"late", :delay) ? x : x *-1  #if word late does not appear, train left early
+    transform([:station, :train] .=> categorical, renamecols = false)
 end
 
 
