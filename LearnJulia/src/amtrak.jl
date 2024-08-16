@@ -5,7 +5,6 @@ using DataFrames
 using DataFramesMeta
 using Dates
 using Statistics
-using AlgebraOfGraphics
 using CairoMakie
 using CategoricalArrays
 
@@ -76,11 +75,10 @@ gd = @chain mod_df begin
        end
 end
 
+f = Figure();
+ax = Axis(f[1,1], xlabel = "Station", ylabel = "Mean Delay (mins)", title = "Mean Delay by Station", xticks = (1:length(levels(gd.station_code)), levels(gd.station)), xticklabelrotation = pi/2)
+barplot!(ax, gd.station_code, gd.mean, dodge = gd.train_code, color = gd.train_code)
 
-# AlgebraOfGraphics
-axis = (width = 750, height = 750,  title = "Mean Delay by Station", xlabel = "Station", ylabel = "Delay (mins)",xticklabelrotation = 45)
-mean_delay = data(gd) * mapping(:station, :mean, color = :train => "Train", dodge = :train) * visual(BarPlot)
-draw(mean_delay; axis = axis)
+f
 
-# CairoMakie
-CairoMakie.barplot(gd.station_code, gd.mean, dodge = gd.train_code, color = gd.train_code)
+levels(gd.station_code)
