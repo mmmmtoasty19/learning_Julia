@@ -74,6 +74,7 @@ gd = @chain mod_df begin
         :train_code = levelcode(:train)
        end
 end
+
 colors = cgrad(:Dark2_6)
 f = Figure();
 ax = Axis(f[1,1], xlabel = "Station", ylabel = "Mean Delay (mins)", title = "Mean Delay by Station", xticks = (1:length(levels(gd.station_code)), levels(gd.station)), xticklabelrotation = pi/2)
